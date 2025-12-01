@@ -1,0 +1,16 @@
+{
+    "features": [
+        "rarity_lag_1",
+        "rarity_lag_30",
+        "rarity_lag_180",
+        "rarity_lag_90",
+        "rarity_roll_7",
+        "rarity_roll_90",
+        "Diameter_Max",
+        "V relative(km/s)",
+        "H(mag)"
+    ],
+    "target": "Rarity",
+    "seq_length": 30,
+    "split_date": "2025-01-01"
+}
