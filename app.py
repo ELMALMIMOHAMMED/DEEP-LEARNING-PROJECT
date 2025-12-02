@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # ===============================
 # 0. Chemins des fichiers (tout à la racine du repo)
 # ===============================
-DATA_PATH = Path("neo_daily_lags.csv.gz")
+DATA_PATH = Path("neo_daily_lags (1).csv.gz")
 CONFIG_PATH = Path("features_config.json")
 SCALER_PATH = Path("scaler.pkl")
 
@@ -114,7 +114,7 @@ st.title("🛰️ Prédiction de la *Rarity* des NEO avec Deep Learning")
 st.markdown(
     """
     Cette interface utilise :
-    - la **dernière data daily avec lags** (`neo_daily_lags.csv.gz`),
+    - la **dernière data daily avec lags** (`neo_daily_lags (1).csv.gz`),
     - un fichier **JSON de configuration des features** (`features_config.json`),
     - des modèles **Deep Learning** déjà entraînés (`.h5`),
     - un `scaler.pkl` (MinMaxScaler) pour reproduire le pré-traitement.
