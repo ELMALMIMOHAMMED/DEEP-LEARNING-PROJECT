@@ -14,7 +14,7 @@ from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 
 # ===============================
-# 0. Chemins des fichiers (tout à la racine)
+# 0. Chemins des fichiers (tout à la racine du repo)
 # ===============================
 DATA_PATH = Path("neo_daily_lags.csv.gz")
 CONFIG_PATH = Path("features_config.json")
@@ -38,12 +38,12 @@ def load_config():
 
 @st.cache_data
 def load_data():
-    # CSV compressé en gzip, index = date (comme dans ton notebook daily)
+    # CSV compressé en gzip, index = date
     df = pd.read_csv(
         DATA_PATH,
         index_col=0,
         parse_dates=True,
-        compression="gzip"
+        compression="gzip",
     )
     return df
 
@@ -55,7 +55,9 @@ def load_scaler():
 
 @st.cache_resource
 def load_dl_model(path: Path):
-    return load_model(path)
+    # IMPORTANT : on ne recharge pas la loss / optimizer / metrics
+    # pour éviter les erreurs de compatibilité entre versions Keras.
+    return load_model(path, compile=False, safe_mode=False)
 
 def make_sequences(X_2d: np.ndarray, y_1d: np.ndarray, window: int):
     """
@@ -66,7 +68,7 @@ def make_sequences(X_2d: np.ndarray, y_1d: np.ndarray, window: int):
     X_seqs, y_seqs = [], []
     for i in range(len(X_2d) - window):
         X_seqs.append(X_2d[i:i+window])
-        y_seqs.append(y_1d[i+window])
+        y_seqs.append(y_1d[i + window])
     return np.array(X_seqs), np.array(y_seqs)
 
 def build_train_test_sequences(df, features, target, split_date, scaler, window):
@@ -160,7 +162,7 @@ if not available_models:
 model_name = st.selectbox(
     "Modèle à utiliser :",
     options=list(available_models.keys()),
-    index=0
+    index=0,
 )
 
 model_path = available_models[model_name]
@@ -214,7 +216,7 @@ st.write("### 📥 Télécharger les prédictions (test set fenêtré)")
 
 results_df = pd.DataFrame({
     "Rarity_true": y_test_seq,
-    "Rarity_pred": y_pred_test
+    "Rarity_pred": y_pred_test,
 })
 
 st.dataframe(results_df.head())
@@ -224,5 +226,5 @@ st.download_button(
     label="⬇️ Télécharger les prédictions (CSV)",
     data=csv_bytes,
     file_name=f"neo_rarity_predictions_{model_name}.csv",
-    mime="text/csv"
+    mime="text/csv",
 )
