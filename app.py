@@ -104,6 +104,38 @@ def build_train_test_sequences(df, features, target, split_date, scaler, window)
 
     return X_train_seq, y_train_seq, X_test_seq, y_test_seq, train, test
 
+def categorize_rarity(value: float) -> str:
+    """
+    Mappe une valeur de Rarity → catégorie texte compréhensible.
+    D'après la description :
+      0 ~ 100/an, 1 ~ 1/mois, 2 ~ 1/an, 3 ~ 1/décennie, etc.
+    On arrondit à l'entier le plus proche pour l'explication.
+    """
+    if value is None:
+        return "n/a (pas d'estimation)"
+    try:
+        v = float(value)
+    except Exception:
+        return "n/a (valeur non numérique)"
+
+    if np.isnan(v):
+        return "n/a (pas d'estimation)"
+
+    r = int(round(v))
+
+    if r <= 0:
+        return "0 : très fréquent (~100 fois par an, tous les quelques jours)"
+    elif r == 1:
+        return "1 : fréquent (~1 fois par mois)"
+    elif r == 2:
+        return "2 : modéré (~1 fois par an)"
+    elif r == 3:
+        return "3 : rare (~1 fois par décennie)"
+    elif r == 4:
+        return "4 : très rare (~1 fois par siècle, extrapolé)"
+    else:  # r >= 5
+        return f"{r} : extrêmement rare (bien moins fréquent qu'une fois par siècle, extrapolé)"
+
 # ===============================
 # 2. UI Streamlit
 # ===============================
@@ -201,7 +233,7 @@ st.info(f"📂 Modèle sélectionné : `{model_name}` → `{model_path}`")
 model = load_dl_model(model_path)
 
 # ===============================
-# 8. Construction des séquences & prédictions
+# 8. Construction des séquences & prédictions (test set)
 # ===============================
 st.subheader("📊 Évaluation sur le jeu de test")
 
@@ -240,7 +272,76 @@ ax.grid(True, alpha=0.3)
 st.pyplot(fig)
 
 # ===============================
-# 10. Export des prédictions
+# 9 bis. Prédiction pour UNE seule combinaison d'entrées
+# ===============================
+st.write("### 🎛 Prédiction pour une combinaison personnalisée (1 seul cas)")
+
+needed_inputs = ["Diameter_Max", "V relative(km/s)", "H(mag)"]
+for col in needed_inputs:
+    if col not in features:
+        st.warning(
+            f"La feature `{col}` n'est pas dans la liste des features utilisées. "
+            "Vérifie ton features_config.json."
+        )
+        st.stop()
+
+# Valeurs par défaut = dernière ligne de df (dernier jour)
+last_row = df.iloc[-1]
+default_diam = float(last_row["Diameter_Max"])
+default_vrel = float(last_row["V relative(km/s)"])
+default_Hmag = float(last_row["H(mag)"])
+
+col_a, col_b, col_c = st.columns(3)
+
+with col_a:
+    input_diam = st.number_input(
+        "Diameter_Max",
+        value=default_diam,
+        format="%.6f"
+    )
+with col_b:
+    input_vrel = st.number_input(
+        "V relative(km/s)",
+        value=default_vrel,
+        format="%.6f"
+    )
+with col_c:
+    input_Hmag = st.number_input(
+        "H(mag)",
+        value=default_Hmag,
+        format="%.3f"
+    )
+
+if st.button("🔮 Prédire Rarity pour ces valeurs"):
+    # On prend la dernière fenêtre temporelle sur toutes les features
+    context = df[features].tail(window).copy()
+
+    # On modifie la dernière ligne avec les nouvelles entrées
+    # (les autres features de lags restent cohérentes avec l'historique réel)
+    last_idx = context.index[-1]
+    context.loc[last_idx, "Diameter_Max"] = input_diam
+    context.loc[last_idx, "V relative(km/s)"] = input_vrel
+    context.loc[last_idx, "H(mag)"] = input_Hmag
+
+    # Scaling (le scaler attend du 2D)
+    context_scaled = scaler.transform(context.values)  # (window, n_features)
+
+    # Reshape pour le modèle DL : (1, window, n_features)
+    X_single = context_scaled.reshape(1, window, len(features))
+
+    # Prédiction
+    y_single_pred = model.predict(X_single).flatten()[0]
+
+    # Catégorisation
+    cat = categorize_rarity(y_single_pred)
+
+    st.success(
+        f"✨ Rarity prédite pour ces entrées : **{y_single_pred:.4f}**\n\n"
+        f"📎 Catégorie : **{cat}**"
+    )
+
+# ===============================
+# 10. Export des prédictions (test set complet, SANS catégorie supplémentaire)
 # ===============================
 st.write("### 📥 Télécharger les prédictions (test set fenêtré)")
 
